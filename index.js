@@ -16,6 +16,7 @@ let g_isPoweredOn = false;
 let g_isReady = false;
 let g_connectedPeripheralCount = 0;
 
+NativeAppEventEmitter.addListener('bluetooth.peripheral.write',_onPeripheralWrite);
 NativeAppEventEmitter.addListener('bluetooth.peripheral.read',_onPeripheralRead);
 NativeAppEventEmitter.addListener('bluetooth.peripheral.update_value',_onPeripheralUpdateValue);
 NativeAppEventEmitter.addListener('bluetooth.central.state',_onCentralState);
@@ -68,12 +69,21 @@ function _onPeripheralRead(data) {
     console.log("Bluetooth._onPeripheralRead: respondToRequest err:",err);
   });
 }
-function _onPeripheralUpdateValue(data) {
-  const { characteristic } = data;
-  const { valueBase64 } = characteristic;
+
+function _onPeripheralWrite(data) {
+  const { valueBase64 } = data;
   const buf = new Buffer(valueBase64,'base64');
-  characteristic.valueBuffer = buf;
-  characteristic.value = buf.toString('utf8');
+  data.valueBuffer = buf;
+  data.value = buf.toString('utf8');
+
+  g_eventEmitter.emit("write",data);
+}
+
+function _onPeripheralUpdateValue(data) {
+  const { valueBase64 } = data;
+  const buf = new Buffer(valueBase64,'base64');
+  data.valueBuffer = buf;
+  data.value = buf.toString('utf8');
 
   g_eventEmitter.emit("updateValue",data);
 }

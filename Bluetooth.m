@@ -143,8 +143,8 @@ static BluetoothResponder *g_sharedInstance = nil;
     _peripheralList = [NSMutableArray new];
     _requestMap = [NSMutableDictionary new];
 
-    CBCharacteristicProperties props = CBCharacteristicPropertyRead | CBCharacteristicPropertyNotify;
-    CBAttributePermissions permissions = CBAttributePermissionsReadable;
+    CBCharacteristicProperties props = CBCharacteristicPropertyRead | CBCharacteristicPropertyNotify | CBCharacteristicPropertyWrite;
+    CBAttributePermissions permissions = CBAttributePermissionsReadable | CBAttributePermissionsWriteable;
 
     _characteristic = [[CBMutableCharacteristic alloc] initWithType:g_characteristicUUID
       properties:props
@@ -273,9 +273,15 @@ static BluetoothResponder *g_sharedInstance = nil;
 }
 - (void)peripheralManager:(CBPeripheralManager *)peripheral
   didReceiveWriteRequests:(NSArray<CBATTRequest *> *)requests {
-  //NSLog(@"didReceiveWriteRequests: count: %ld",requests.count);
   for (CBATTRequest *request in requests) {
-    //NSLog(@"request: UUID: %@, value: %@, offset: %ld",request.characteristic.UUID,request.value,request.offset);
+    NSString *valueBase64 = [request.value base64EncodedStringWithOptions:0];
+    [_delegate sendEvent:@"bluetooth.peripheral.write" body:@{
+      @"time": getTime(),
+      @"central": [request.central.identifier UUIDString],
+      @"offset": [NSNumber numberWithLong:request.offset],
+      @"valueBase64": valueBase64,
+      @"characteristicUUID": [request.characteristic.UUID UUIDString],
+    }];
     [peripheral respondToRequest:request withResult:CBATTErrorSuccess];
   }
 }
@@ -380,10 +386,8 @@ static BluetoothResponder *g_sharedInstance = nil;
     @"time": getTime(),
     @"error": error ? [error description] : [NSNull null],
     @"peripheral": [peripheral.identifier UUIDString],
-    @"characteristic": @{
-      @"UUID": [characteristic.UUID UUIDString],
-      @"valueBase64": valueBase64,
-    },
+    @"characteristicUUID": [characteristic.UUID UUIDString],
+    @"valueBase64": valueBase64,
   }];
 }
  - (void)peripheral:(CBPeripheral *)peripheral
